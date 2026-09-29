@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: RangeGauge
+## Notes: Simple draggable range indicator (melee / spell range / dead zone) for the target. Built for WoW: Forever beta (build 1.60.x, interface 16001).
+## Author: tigertom00
+## Version: 0.1
+## SavedVariables: RangeGaugeDB
+
+RangeGauge.lua
