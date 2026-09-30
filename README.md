@@ -1,5 +1,7 @@
 # RangeGauge
 
+![RangeGauge preview](RangeGauge.jpg)
+
 A small, draggable range indicator for your current target, built for the **World of Warcraft: Forever** beta (interface `16001`).
 
 It scratches the same itch as classic-era range checkers like [Egnar](https://github.com/Medeah/Egnar) on Turtle WoW, but it's built for Forever's modern, Retail-style API rather than vanilla 1.12 — so it works for any class, not just Hunters, and doesn't rely on any action-bar hacks.
