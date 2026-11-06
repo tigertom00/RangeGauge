@@ -2,15 +2,13 @@
 
 ![RangeGauge preview](RangeGauge.jpg)
 
-A small, draggable range indicator for your current target, built for the **World of Warcraft: Forever** beta (interface `16001`).
+A small, draggable range indicator for your current target, built for **World of Warcraft: Forever** (interface `16001`).
 
 It scratches the same itch as classic-era range checkers like [Egnar](https://github.com/Medeah/Egnar) on Turtle WoW, but it's built for Forever's modern, Retail-style API rather than vanilla 1.12 — so it works for any class, not just Hunters, and doesn't rely on any action-bar hacks.
 
-![state](https://img.shields.io/badge/status-beta--client--only-orange)
-
 ## Features
 
-- A small on-screen box that shows your target's range: `Melee`, `Close`, `Spell Range`, `Out of Range`, `Dead Zone`, or `Target Dead`.
+- A small on-screen box that shows your target's range: `Melee`, `Close`, `Spell Range`, `Out of Range`, `Dead Zone`, `Target Dead`, or `No Range Info`.
 - Automatically hides when you have no target.
 - **Hunters** get an exact 8–35 yard read (including the vanilla dead zone) via Auto Shot's range check.
 - Any class can point it at one of their own spells for a precise, class-specific range check.
@@ -23,7 +21,7 @@ It scratches the same itch as classic-era range checkers like [Egnar](https://gi
 Drop the `RangeGauge` folder into:
 
 ```
-World of Warcraft/_classic_beta_/Interface/AddOns/
+World of Warcraft/_forever_/Interface/AddOns/
 ```
 
 Then `/reload` or relaunch the client.
@@ -47,14 +45,15 @@ Forever runs Blizzard's Mainline UI on interface `16001`, not the vanilla 1.12 A
 - **Hunters:** Auto Shot (spell ID 75) reports a real 8–35 yard range, dead zone included, so Hunters get an exact read for free.
 - **Everyone else (generic mode):** falls back to `CheckInteractDistance` buckets (~9.9 / 11.11 / 28 yd), with true melee contact confirmed by listening for a `PLAYER_SWING` main-hand event.
 - **Custom spell mode (`/rg spell`):** uses `C_Spell.IsSpellInRange` directly against the chosen spell for a precise, non-bucketed answer.
+- **Friendly targets in combat:** `CheckInteractDistance` can be blocked here, so RangeGauge skips it and shows `No Range Info` unless a spell check has already given an answer.
 
 ### Known limitation
 
-As of this beta build, `C_SwingTimer.IsTargetWithinSwingRange` always returns `nil`, so there's no exact 5-yard melee check exposed by the client yet. RangeGauge approximates melee with the closest available interact-distance bucket and corroborates it with real `PLAYER_SWING` events. This should get more precise for free once Blizzard fixes that API.
+On the beta, `C_SwingTimer.IsTargetWithinSwingRange` always returned `nil` (not yet re-checked on live), so RangeGauge doesn't use it for an exact 5-yard melee check. It approximates melee with the closest available interact-distance bucket and corroborates it with real `PLAYER_SWING` events.
 
 ## Compatibility
 
-Built and tested against WoW: Forever beta, interface `16001`. This is early, largely undocumented beta software — expect the range-check APIs this addon depends on to keep shifting as Blizzard patches the client.
+Built for WoW: Forever, interface `16001`. The client's API is largely undocumented, so the range checks this addon depends on may shift as Blizzard patches it.
 
 ## License
 

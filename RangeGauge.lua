@@ -1,4 +1,4 @@
--- RangeGauge: a small target-range indicator for WoW: Forever beta (interface 16001).
+-- RangeGauge: a small target-range indicator for WoW: Forever (interface 16001).
 --
 -- Forever runs the modern Mainline API, not the vanilla 1.12 API that older range
 -- checkers (e.g. Egnar on Turtle WoW) had to work around with class-specific tricks
@@ -6,14 +6,19 @@
 -- Here CheckInteractDistance and C_Spell.IsSpellInRange return plain (non-secret)
 -- values against a hostile target, so we can just ask the API directly.
 --
--- Known beta limitation (as of build ~1.60.1.700xx): C_SwingTimer.IsTargetWithinSwingRange
--- always returns nil, so there is no exact 5-yard melee check. We approximate melee
+-- CheckInteractDistance is a protected call in some situations, which raises
+-- ADDON_ACTION_BLOCKED (seen on live, build 1.60.1.70790). InteractChecksAllowed()
+-- gates every call to it.
+--
+-- Limitation seen on the beta (build ~1.60.1.700xx, not re-checked on live):
+-- C_SwingTimer.IsTargetWithinSwingRange always returned nil, so there is no exact
+-- 5-yard melee check. We approximate melee
 -- with the closest available interact-distance bucket (duel range, ~9.9 yd) and
 -- confirm real melee contact from PLAYER_SWING events when they fire.
 
 local UPDATE_INTERVAL = 0.2
 
--- Auto Shot's spell ID is stable across WoW versions. On this beta it has been
+-- Auto Shot's spell ID is stable across WoW versions. On Forever it has been
 -- confirmed to report a real 8-35 yard range (including the vanilla dead zone),
 -- so Hunters get an exact read instead of the generic bucket fallback.
 local AUTO_SHOT_SPELL_ID = 75
@@ -31,7 +36,7 @@ local lastMainHandSwing = 0
 local mainHandSwingDuration = 0
 
 -- Registering an event the client doesn't know about throws and aborts the whole
--- file on this beta, so anything not rock-solid goes through pcall.
+-- file on this client, so anything not rock-solid goes through pcall.
 local function SafeRegisterEvent(f, event)
     pcall(f.RegisterEvent, f, event)
 end
@@ -118,8 +123,8 @@ local function SetLocked(locked)
 end
 
 -- Track real melee contact via PLAYER_SWING, since C_SwingTimer's range check
--- is currently non-functional on this build (EnableRangeCheck succeeds but
--- IsTargetWithinSwingRange always returns nil).
+-- was non-functional on the beta (EnableRangeCheck succeeded but
+-- IsTargetWithinSwingRange always returned nil).
 local swingFrame = CreateFrame("Frame")
 SafeRegisterEvent(swingFrame, "PLAYER_SWING")
 swingFrame:SetScript("OnEvent", function(_, event, duration, swingType)
@@ -134,6 +139,25 @@ local function RecentMainHandSwing()
         return false
     end
     return (GetTime() - lastMainHandSwing) < mainHandSwingDuration
+end
+
+-- CheckInteractDistance can get blocked when called from addon code. The rule
+-- isn't documented: this assumes the one EllesmereUI documents for
+-- C_Item.IsItemInRange, i.e. blocked in combat (or a Mythic+ run) against a unit
+-- the player can't attack, and legal against hostile targets. If attackability
+-- itself is secret, fail toward skipping: "no answer" beats a blocked action.
+local function InteractChecksAllowed()
+    local restricted = InCombatLockdown()
+        or (C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive
+            and C_ChallengeMode.IsChallengeModeActive())
+    if not restricted then
+        return true
+    end
+    local canAttack = UnitCanAttack("player", "target")
+    if issecretvalue and issecretvalue(canAttack) then
+        return false
+    end
+    return canAttack == true
 end
 
 local function Update()
@@ -152,7 +176,7 @@ local function Update()
     if playerClass == "HUNTER" then
         local inRange = C_Spell.IsSpellInRange(AUTO_SHOT_SPELL_ID, "target")
         if inRange == false then
-            if CheckInteractDistance("target", INTERACT_DUEL) then
+            if InteractChecksAllowed() and CheckInteractDistance("target", INTERACT_DUEL) then
                 SetState("DEAD ZONE", 1, 0.5, 0)
             else
                 SetState("Out of Range", 1, 0.2, 0.2)
@@ -181,7 +205,11 @@ local function Update()
     -- Generic fallback: interact-distance buckets, melee confirmed by real swings.
     -- Note: 0-range melee abilities report "in range" at any distance on this
     -- build, so they are deliberately not used here.
-    if RecentMainHandSwing() or CheckInteractDistance("target", INTERACT_DUEL) then
+    if RecentMainHandSwing() then
+        SetState("Melee", 0.2, 1, 0.2)
+    elseif not InteractChecksAllowed() then
+        SetState("No Range Info", 0.6, 0.6, 0.6)
+    elseif CheckInteractDistance("target", INTERACT_DUEL) then
         SetState("Melee", 0.2, 1, 0.2)
     elseif CheckInteractDistance("target", INTERACT_TRADE) then
         SetState("Close", 1, 1, 0.2)
